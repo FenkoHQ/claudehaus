@@ -1,0 +1,16 @@
+{{define "sessions"}}
+{{range .}}
+<div class="session-item {{if .HasPending}}pending{{end}}" 
+     data-session-id="{{.ID}}"
+     hx-get="/partials/session/{{.ID}}"
+     hx-target="#session-detail"
+     hx-swap="innerHTML">
+    <span class="status-dot {{.Status}}"></span>
+    <span class="session-name">{{.Nickname}}</span>
+</div>
+{{else}}
+<div class="empty-state">
+    <p class="muted">NO ACTIVE SESSIONS</p>
+</div>
+{{end}}
+{{end}}

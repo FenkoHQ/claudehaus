@@ -1,0 +1,52 @@
+{{define "content"}}
+<div class="layout">
+    <header class="header">
+        <h1 class="logo">░▒▓ CLAUDEHAUS ▓▒░</h1>
+        <div class="header-actions">
+            <button class="btn btn-ghost" onclick="showHelp()">[?] HELP</button>
+            <a href="/settings" class="btn btn-ghost">[⚙] CONFIG</a>
+        </div>
+    </header>
+    
+    <div class="main">
+        <aside class="sidebar" id="session-list">
+            <div class="sidebar-header">SESSIONS</div>
+            <div class="sidebar-divider"></div>
+            <div id="sessions" hx-get="/partials/sessions" hx-trigger="load, refresh from:body" hx-swap="innerHTML">
+                <div class="loading">LOADING...</div>
+            </div>
+        </aside>
+        
+        <main class="content" id="session-detail">
+            <div class="empty-state">
+                <p>SELECT A SESSION</p>
+                <p class="muted">or wait for Claude Code to connect</p>
+            </div>
+        </main>
+    </div>
+    
+    <footer class="status-bar">
+        <span>&gt; READY</span>
+        <span class="muted">PRESS ? FOR SHORTCUTS</span>
+    </footer>
+</div>
+
+<div id="help-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>KEYBOARD SHORTCUTS</span>
+            <button class="btn btn-ghost" onclick="hideHelp()">[X]</button>
+        </div>
+        <div class="modal-body">
+            <div class="shortcut"><kbd>y</kbd> / <kbd>a</kbd> Allow pending request</div>
+            <div class="shortcut"><kbd>n</kbd> / <kbd>d</kbd> Deny pending request</div>
+            <div class="shortcut"><kbd>j</kbd> / <kbd>↓</kbd> Navigate down</div>
+            <div class="shortcut"><kbd>k</kbd> / <kbd>↑</kbd> Navigate up</div>
+            <div class="shortcut"><kbd>1-9</kbd> Quick-switch sessions</div>
+            <div class="shortcut"><kbd>e</kbd> Expand/collapse event</div>
+            <div class="shortcut"><kbd>/</kbd> Focus search</div>
+            <div class="shortcut"><kbd>Esc</kbd> Close modal</div>
+        </div>
+    </div>
+</div>
+{{end}}

@@ -1,0 +1,46 @@
+{{define "session_detail"}}
+<div class="session-header">
+    <div class="session-title">
+        <span>SESSION: [ {{.Session.Nickname}} ]</span>
+        <span class="session-status {{.Session.Status}}">● {{.Session.Status}}</span>
+    </div>
+    <div class="session-path">PATH: {{.Session.ProjectDir}}</div>
+</div>
+
+<div class="divider"></div>
+
+{{range .Approvals}}
+<div class="approval-card" data-approval-id="{{.ID}}">
+    <div class="approval-header">─ PENDING APPROVAL ─</div>
+    <div class="approval-tool">TOOL: {{.ToolName}}</div>
+    <pre class="approval-command">&gt; {{.ToolInput}}</pre>
+    <div class="approval-actions">
+        <button class="btn btn-allow" 
+                hx-post="/api/approvals/{{.ID}}"
+                hx-vals='{"decision":"allow"}'
+                hx-swap="none">[Y] ALLOW</button>
+        <button class="btn btn-deny"
+                hx-post="/api/approvals/{{.ID}}"
+                hx-vals='{"decision":"deny"}'
+                hx-swap="none">[N] DENY</button>
+    </div>
+    <div class="approval-timeout">TIMEOUT: {{.TimeRemaining}}s remaining</div>
+</div>
+{{end}}
+
+<div class="divider"></div>
+
+<div class="event-feed">
+    <div class="event-feed-header">EVENT FEED</div>
+    {{range .Events}}
+    <div class="event-item">
+        <span class="event-time">{{.Timestamp}}</span>
+        <span class="event-type">{{.EventName}}</span>
+        <span class="event-tool">{{.ToolName}}</span>
+        <span class="event-detail">{{.Detail}}</span>
+    </div>
+    {{else}}
+    <div class="muted" style="padding: 8px 0;">No events yet</div>
+    {{end}}
+</div>
+{{end}}

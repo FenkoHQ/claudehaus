@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+#
+# claudehaus-hook - Forward Claude Code hooks to Claudehaus server
+#
+# Usage: claudehaus-hook [--chain <command>]
+#
+# Environment:
+#   CLAUDEHAUS_URL    Server URL (default: http://127.0.0.1:8420)
+#   CLAUDEHAUS_TOKEN  Auth token (required)
+#
+# Reads hook input from stdin, forwards to server, optionally chains.
+
+set -euo pipefail
+
+CLAUDEHAUS_URL="${CLAUDEHAUS_URL:-http://127.0.0.1:8420}"
+CLAUDEHAUS_TOKEN="${CLAUDEHAUS_TOKEN:-}"
+CHAIN_CMD=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --chain)
+            CHAIN_CMD="$2"
+            shift 2
+            ;;
+        --url)
+            CLAUDEHAUS_URL="$2"
+            shift 2
+            ;;
+        --token)
+            CLAUDEHAUS_TOKEN="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -z "$CLAUDEHAUS_TOKEN" ]]; then
+    CONFIG_FILE="$HOME/.claudehaus/config.json"
+    if [[ -f "$CONFIG_FILE" ]]; then
+        CLAUDEHAUS_TOKEN=$(grep -o '"value_hash"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | head -1 | cut -d'"' -f4 || true)
+    fi
+fi
+
+if [[ -z "$CLAUDEHAUS_TOKEN" ]]; then
+    echo "Error: CLAUDEHAUS_TOKEN not set and no config found" >&2
+    exit 1
+fi
+
+INPUT=$(cat)
+
+HOOK_EVENT=$(echo "$INPUT" | grep -o '"hook_event_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+
+if [[ -z "$HOOK_EVENT" ]]; then
+    echo "Error: Could not extract hook_event_name from input" >&2
+    exit 1
+fi
+
+if [[ -n "$CHAIN_CMD" ]]; then
+    echo "$INPUT" | $CHAIN_CMD &
+    CHAIN_PID=$!
+fi
+
+RESPONSE=$(curl -s -w "\n%{http_code}" \
+    -X POST \
+    -H "Authorization: Bearer $CLAUDEHAUS_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$INPUT" \
+    "${CLAUDEHAUS_URL}/api/hooks/${HOOK_EVENT}" 2>/dev/null || echo -e "\n000")
+
+HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
+
+if [[ -n "$CHAIN_CMD" ]]; then
+    wait "$CHAIN_PID" 2>/dev/null || true
+fi
+
+case "$HOOK_EVENT" in
+    PermissionRequest)
+        if [[ "$HTTP_CODE" == "200" ]] && [[ -n "$BODY" ]]; then
+            echo "$BODY"
+            exit 0
+        fi
+        exit 0
+        ;;
+    *)
+        exit 0
+        ;;
+esac
