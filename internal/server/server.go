@@ -15,14 +15,20 @@ type Server struct {
 	sessions  *session.Store
 	approvals *hooks.ApprovalStore
 	hub       *Hub
+	templates *Templates
 }
 
 func New(cfg *config.Config) *Server {
+	templates, err := NewTemplates()
+	if err != nil {
+		panic(err)
+	}
 	return &Server{
 		cfg:       cfg,
 		sessions:  session.NewStore(),
 		approvals: hooks.NewApprovalStore(),
 		hub:       NewHub(),
+		templates: templates,
 	}
 }
 
@@ -43,12 +49,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write([]byte(`<!DOCTYPE html>
-<html>
-<head><title>CLAUDEHAUS</title></head>
-<body style="background:#0A0A0A;color:#FF9E45;font-family:monospace;">
-<h1>░▒▓ CLAUDEHAUS ▓▒░</h1>
-<p>STATUS: OPERATIONAL</p>
-</body>
-</html>`))
+	if err := s.templates.Render(w, "base.html", nil); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

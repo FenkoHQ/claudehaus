@@ -21,6 +21,47 @@
             <div class="empty-state">
                 <p>SELECT A SESSION</p>
                 <p class="muted">or wait for Claude Code to connect</p>
+                
+                <div class="setup-guide">
+                    <div class="setup-header">─ SETUP GUIDE ─</div>
+                    
+                    <div class="setup-step">
+                        <span class="step-num">[1]</span>
+                        <span>Set environment variables in your shell:</span>
+                    </div>
+                    <pre class="setup-code">export CLAUDEHAUS_TOKEN="your-token-here"
+export CLAUDEHAUS_URL="http://127.0.0.1:8420"</pre>
+                    
+                    <div class="setup-step">
+                        <span class="step-num">[2]</span>
+                        <span>Copy the hook script to your PATH:</span>
+                    </div>
+                    <pre class="setup-code">cp scripts/claudehaus-hook ~/.local/bin/</pre>
+                    
+                    <div class="setup-step">
+                        <span class="step-num">[3]</span>
+                        <span>Add hooks to ~/.claude/settings.json:</span>
+                    </div>
+                    <pre class="setup-code">{
+  "hooks": {
+    "PermissionRequest": [{ "matcher": "*", "hooks": [
+      { "type": "command", "command": "claudehaus-hook" }
+    ]}],
+    "PreToolUse": [{ "matcher": "*", "hooks": [
+      { "type": "command", "command": "claudehaus-hook" }
+    ]}],
+    "SessionStart": [{ "hooks": [
+      { "type": "command", "command": "claudehaus-hook" }
+    ]}]
+  }
+}</pre>
+                    
+                    <div class="setup-step">
+                        <span class="step-num">[4]</span>
+                        <span>To chain with existing hooks, use --chain:</span>
+                    </div>
+                    <pre class="setup-code">"command": "claudehaus-hook --chain '/path/to/your-hook.sh'"</pre>
+                </div>
             </div>
         </main>
     </div>

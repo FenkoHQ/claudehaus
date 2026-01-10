@@ -397,3 +397,39 @@ kbd {
     background: var(--structure-gray);
     margin: 16px 0;
 }
+
+.setup-guide {
+    margin-top: 32px;
+    text-align: left;
+    max-width: 600px;
+    border: 1px solid var(--structure-gray);
+    padding: 16px;
+}
+
+.setup-header {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--fennec-amber);
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.setup-step {
+    margin: 16px 0 8px 0;
+    font-size: 12px;
+}
+
+.step-num {
+    color: var(--fennec-amber);
+    margin-right: 8px;
+}
+
+.setup-code {
+    background: var(--structure-gray);
+    padding: 12px;
+    font-size: 11px;
+    overflow-x: auto;
+    margin: 0;
+    border: 1px solid var(--structure-gray);
+}
