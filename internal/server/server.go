@@ -14,6 +14,7 @@ type Server struct {
 	cfg       *config.Config
 	sessions  *session.Store
 	approvals *hooks.ApprovalStore
+	events    *hooks.EventStore
 	hub       *Hub
 	templates *Templates
 }
@@ -27,6 +28,7 @@ func New(cfg *config.Config) *Server {
 		cfg:       cfg,
 		sessions:  session.NewStore(),
 		approvals: hooks.NewApprovalStore(),
+		events:    hooks.NewEventStore(),
 		hub:       NewHub(),
 		templates: templates,
 	}

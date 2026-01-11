@@ -18,6 +18,7 @@ type PendingApproval struct {
 	ExpiresAt    time.Time       `json:"expires_at"`
 	ToolName     string          `json:"tool_name"`
 	ToolInput    json.RawMessage `json:"tool_input"`
+	Prompt       string          `json:"prompt"`
 	ResponseChan chan Decision   `json:"-"`
 }
 

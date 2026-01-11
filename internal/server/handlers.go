@@ -66,11 +66,13 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 
 	switch event {
 	case "SessionStart":
+		s.events.AddEvent(input.SessionID, "SessionStart", "", "", "Session started")
 		s.hub.Broadcast(Message{Type: "session_update", SessionID: input.SessionID, Data: map[string]any{"status": "active"}})
 		slog.Info("session started", "session_id", input.SessionID, "nickname", sess.Nickname)
 		w.WriteHeader(http.StatusOK)
 
 	case "SessionEnd":
+		s.events.AddEvent(input.SessionID, "SessionEnd", "", "", "Session ended")
 		s.sessions.UpdateStatus(input.SessionID, session.StatusEnded)
 		s.hub.Broadcast(Message{Type: "session_update", SessionID: input.SessionID, Data: map[string]any{"status": "ended"}})
 		slog.Info("session ended", "session_id", input.SessionID, "nickname", sess.Nickname)
@@ -87,6 +89,7 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 			ExpiresAt:    time.Now().Add(timeout),
 			ToolName:     input.ToolName,
 			ToolInput:    input.ToolInput,
+			Prompt:       input.Prompt,
 			ResponseChan: make(chan hooks.Decision, 1),
 		}
 
@@ -122,6 +125,9 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 				"decision", decision.Behavior,
 				"message", decision.Message)
 
+			s.events.AddEvent(input.SessionID, "PermissionRequest", input.ToolName, string(input.ToolInput),
+				"Approved: "+decision.Behavior)
+
 			var resp hooks.ApprovalResponse
 			if decision.Behavior == "allow" {
 				resp = hooks.NewAllowResponse()
@@ -139,6 +145,9 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 				"approval_id", approvalID,
 				"timeout_behavior", s.cfg.Settings.ApprovalTimeoutBehavior)
 
+			s.events.AddEvent(input.SessionID, "PermissionRequest", input.ToolName, string(input.ToolInput),
+				"Timed out")
+
 			s.hub.Broadcast(Message{Type: "approval_resolved", Data: map[string]any{"approval_id": approvalID, "decision": "timeout"}})
 
 			switch s.cfg.Settings.ApprovalTimeoutBehavior {
@@ -152,6 +161,7 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case "Stop", "SubagentStop":
+		s.events.AddEvent(input.SessionID, event, "", "", "Task stopped")
 		s.sessions.UpdateStatus(input.SessionID, session.StatusIdle)
 		s.hub.Broadcast(Message{Type: "session_update", SessionID: input.SessionID, Data: map[string]any{"status": "idle"}})
 		slog.Info("session idle", "session_id", input.SessionID, "event", event)

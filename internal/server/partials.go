@@ -35,6 +35,7 @@ type approvalData struct {
 	ID            string
 	ToolName      string
 	ToolInput     string
+	Prompt        string
 	TimeRemaining int
 }
 
@@ -65,14 +66,26 @@ func (s *Server) handlePartialSessionDetail(w http.ResponseWriter, r *http.Reque
 			ID:            p.ID,
 			ToolName:      p.ToolName,
 			ToolInput:     string(p.ToolInput),
+			Prompt:        p.Prompt,
 			TimeRemaining: remaining,
+		})
+	}
+
+	events := s.events.GetBySession(id, 50)
+	eventList := make([]eventData, 0, len(events))
+	for _, e := range events {
+		eventList = append(eventList, eventData{
+			Timestamp: e.Timestamp,
+			EventName: e.EventName,
+			ToolName:  e.ToolName,
+			Detail:    e.Detail,
 		})
 	}
 
 	data := sessionDetailData{
 		Session:   sess,
 		Approvals: approvals,
-		Events:    []eventData{},
+		Events:    eventList,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

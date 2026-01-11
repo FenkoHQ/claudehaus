@@ -12,10 +12,15 @@
 {{range .Approvals}}
 <div class="approval-card" data-approval-id="{{.ID}}">
     <div class="approval-header">─ PENDING APPROVAL ─</div>
+    {{if .Prompt}}
+    <div class="approval-prompt-label">PROMPT:</div>
+    <div class="approval-prompt">{{.Prompt}}</div>
+    <div class="divider"></div>
+    {{end}}
     <div class="approval-tool">TOOL: {{.ToolName}}</div>
     <pre class="approval-command">&gt; {{.ToolInput}}</pre>
     <div class="approval-actions">
-        <button class="btn btn-allow" 
+        <button class="btn btn-allow"
                 hx-post="/api/approvals/{{.ID}}"
                 hx-vals='{"decision":"allow"}'
                 hx-swap="none">[Y] ALLOW</button>

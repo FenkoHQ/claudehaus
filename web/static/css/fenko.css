@@ -477,3 +477,22 @@ kbd {
 .error-message.hidden {
     display: none;
 }
+
+.approval-prompt-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--fennec-amber);
+    margin: 8px 0 4px 0;
+}
+
+.approval-prompt {
+    background: var(--structure-gray);
+    padding: 12px;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: 1px solid var(--structure-gray);
+    max-height: 200px;
+    overflow-y: auto;
+}
