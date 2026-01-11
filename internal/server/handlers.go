@@ -168,6 +168,12 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 	default:
+		// Capture all other events (PreToolUse, PostToolUse, etc.) for the web UI
+		if input.ToolName != "" {
+			s.events.AddEvent(input.SessionID, event, input.ToolName, string(input.ToolInput), "")
+		} else {
+			s.events.AddEvent(input.SessionID, event, "", "", "")
+		}
 		w.WriteHeader(http.StatusOK)
 	}
 }
