@@ -27,11 +27,13 @@
         <button class="btn btn-allow"
                 hx-post="/api/approvals/{{.ID}}"
                 hx-vals='{"decision":"allow"}'
-                hx-swap="none">[Y] ALLOW</button>
+                hx-swap="none"
+                hx-on::after-request="htmx.trigger(document.body, 'refresh')">[Y] ALLOW</button>
         <button class="btn btn-deny"
                 hx-post="/api/approvals/{{.ID}}"
                 hx-vals='{"decision":"deny"}'
-                hx-swap="none">[N] DENY</button>
+                hx-swap="none"
+                hx-on::after-request="htmx.trigger(document.body, 'refresh')">[N] DENY</button>
     </div>
     <div class="approval-timeout">TIMEOUT: {{.TimeRemaining}}s remaining</div>
 </div>

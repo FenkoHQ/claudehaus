@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/aliadnani/claudehaus/internal/hooks"
@@ -229,13 +230,36 @@ func (s *Server) handleUpdateSession(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	var req struct {
-		Decision string `json:"decision"`
-		Message  string `json:"message,omitempty"`
+	var decision, message string
+
+	// HTMX sends hx-vals as JSON when using curly brace syntax
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "application/json") {
+		var req struct {
+			Decision string `json:"decision"`
+			Message  string `json:"message"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			slog.Warn("invalid approval request", "error", err, "approval_id", id)
+			http.Error(w, "invalid request", http.StatusBadRequest)
+			return
+		}
+		decision = req.Decision
+		message = req.Message
+	} else {
+		// Fallback to form data
+		if err := r.ParseForm(); err != nil {
+			slog.Warn("invalid approval request", "error", err, "approval_id", id)
+			http.Error(w, "invalid request", http.StatusBadRequest)
+			return
+		}
+		decision = r.FormValue("decision")
+		message = r.FormValue("message")
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		slog.Warn("invalid approval request", "error", err, "approval_id", id)
-		http.Error(w, "invalid request", http.StatusBadRequest)
+
+	if decision == "" {
+		slog.Warn("missing decision", "approval_id", id)
+		http.Error(w, "missing decision", http.StatusBadRequest)
 		return
 	}
 
@@ -246,22 +270,22 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	decision := hooks.Decision{
-		Behavior: req.Decision,
-		Message:  req.Message,
+	decisionStruct := hooks.Decision{
+		Behavior: decision,
+		Message:  message,
 	}
 
 	select {
-	case pending.ResponseChan <- decision:
+	case pending.ResponseChan <- decisionStruct:
 		slog.Info("approval decision sent via API",
 			"approval_id", id,
-			"decision", req.Decision,
-			"message", req.Message)
+			"decision", decision,
+			"message", message)
 		s.hub.Broadcast(Message{
 			Type: "approval_resolved",
 			Data: map[string]any{
 				"approval_id": id,
-				"decision":    req.Decision,
+				"decision":    decision,
 			},
 		})
 		writeJSON(w, map[string]string{"status": "ok"})

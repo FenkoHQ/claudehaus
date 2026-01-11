@@ -171,16 +171,16 @@
     }
 
     function handleEvent(msg) {
-        htmx.trigger('#session-detail', 'refresh');
+        htmx.trigger(document.body, 'refresh');
     }
 
     function handleApprovalRequest(msg) {
         htmx.trigger('#sessions', 'refresh');
-        htmx.trigger('#session-detail', 'refresh');
+        htmx.trigger(document.body, 'refresh');
     }
 
     function handleApprovalResolved(msg) {
-        htmx.trigger('#session-detail', 'refresh');
+        htmx.trigger(document.body, 'refresh');
     }
 
     function handleSessionUpdate(msg) {
@@ -308,5 +308,13 @@
     // Initialize authentication on page load
     document.addEventListener('DOMContentLoaded', function() {
         checkAuth();
+
+        // Add token to all HTMX requests
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            const token = localStorage.getItem(STORAGE_KEY);
+            if (token) {
+                evt.detail.headers['Authorization'] = 'Bearer ' + token;
+            }
+        });
     });
 })();
