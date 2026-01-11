@@ -1,4 +1,8 @@
 {{define "session_detail"}}
+<div id="session-detail-content"
+     hx-get="/partials/session/{{.Session.ID}}"
+     hx-trigger="refresh from:body"
+     hx-swap="outerHTML">
 <div class="session-header">
     <div class="session-title">
         <span>SESSION: [ {{.Session.Nickname}} ]</span>
@@ -47,5 +51,6 @@
     {{else}}
     <div class="muted" style="padding: 8px 0;">No events yet</div>
     {{end}}
+</div>
 </div>
 {{end}}
