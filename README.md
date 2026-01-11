@@ -11,7 +11,6 @@
 - **Multi-Session Support** - Monitor and switch between multiple Claude Code sessions
 - **Token Authentication** - Secure access with unique tokens for each device
 - **No External Dependencies** - Single binary with embedded assets, JSON file storage
-- **Brutalist Design** - "Fenko" aesthetic matching the command-line experience
 
 ## Quick Start
 
