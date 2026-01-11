@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -17,9 +18,16 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 
 	var input hooks.HookInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		slog.Warn("invalid hook request body", "error", err, "event", event)
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+
+	slog.Info("hook event received",
+		"event", event,
+		"session_id", input.SessionID,
+		"tool_name", input.ToolName,
+		"cwd", input.Cwd)
 
 	sess, exists := s.sessions.Get(input.SessionID)
 	if !exists {
@@ -35,6 +43,12 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 			sess.Nickname = meta.Nickname
 		}
 		s.sessions.Set(sess)
+		slog.Info("new session created",
+			"session_id", input.SessionID,
+			"nickname", sess.Nickname,
+			"project_dir", sess.ProjectDir)
+	} else {
+		slog.Debug("existing session found", "session_id", input.SessionID, "nickname", sess.Nickname)
 	}
 
 	sess.LastEventAt = time.Now()
@@ -53,11 +67,13 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 	switch event {
 	case "SessionStart":
 		s.hub.Broadcast(Message{Type: "session_update", SessionID: input.SessionID, Data: map[string]any{"status": "active"}})
+		slog.Info("session started", "session_id", input.SessionID, "nickname", sess.Nickname)
 		w.WriteHeader(http.StatusOK)
 
 	case "SessionEnd":
 		s.sessions.UpdateStatus(input.SessionID, session.StatusEnded)
 		s.hub.Broadcast(Message{Type: "session_update", SessionID: input.SessionID, Data: map[string]any{"status": "ended"}})
+		slog.Info("session ended", "session_id", input.SessionID, "nickname", sess.Nickname)
 		w.WriteHeader(http.StatusOK)
 
 	case "PermissionRequest":
@@ -78,6 +94,12 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 		sess.HasPending = true
 		sess.PendingCount = s.approvals.CountBySession(input.SessionID)
 
+		slog.Info("permission request pending",
+			"approval_id", approvalID,
+			"session_id", input.SessionID,
+			"tool_name", input.ToolName,
+			"timeout_seconds", s.cfg.Settings.ApprovalTimeoutSeconds)
+
 		s.hub.Broadcast(Message{
 			Type:      "approval_request",
 			SessionID: input.SessionID,
@@ -95,6 +117,11 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 			sess.PendingCount = s.approvals.CountBySession(input.SessionID)
 			sess.HasPending = sess.PendingCount > 0
 
+			slog.Info("permission request resolved",
+				"approval_id", approvalID,
+				"decision", decision.Behavior,
+				"message", decision.Message)
+
 			var resp hooks.ApprovalResponse
 			if decision.Behavior == "allow" {
 				resp = hooks.NewAllowResponse()
@@ -107,6 +134,10 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 			s.approvals.Remove(approvalID)
 			sess.PendingCount = s.approvals.CountBySession(input.SessionID)
 			sess.HasPending = sess.PendingCount > 0
+
+			slog.Warn("permission request timed out",
+				"approval_id", approvalID,
+				"timeout_behavior", s.cfg.Settings.ApprovalTimeoutBehavior)
 
 			s.hub.Broadcast(Message{Type: "approval_resolved", Data: map[string]any{"approval_id": approvalID, "decision": "timeout"}})
 
@@ -123,6 +154,7 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 	case "Stop", "SubagentStop":
 		s.sessions.UpdateStatus(input.SessionID, session.StatusIdle)
 		s.hub.Broadcast(Message{Type: "session_update", SessionID: input.SessionID, Data: map[string]any{"status": "idle"}})
+		slog.Info("session idle", "session_id", input.SessionID, "event", event)
 		w.WriteHeader(http.StatusOK)
 
 	default:
@@ -186,12 +218,14 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request) {
 		Message  string `json:"message,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Warn("invalid approval request", "error", err, "approval_id", id)
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
 	pending, ok := s.approvals.Get(id)
 	if !ok {
+		slog.Warn("approval not found", "approval_id", id)
 		http.Error(w, "approval not found", http.StatusNotFound)
 		return
 	}
@@ -203,6 +237,10 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case pending.ResponseChan <- decision:
+		slog.Info("approval decision sent via API",
+			"approval_id", id,
+			"decision", req.Decision,
+			"message", req.Message)
 		s.hub.Broadcast(Message{
 			Type: "approval_resolved",
 			Data: map[string]any{
@@ -212,6 +250,7 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request) {
 		})
 		writeJSON(w, map[string]string{"status": "ok"})
 	default:
+		slog.Warn("approval already resolved", "approval_id", id)
 		http.Error(w, "approval already resolved", http.StatusConflict)
 	}
 }
@@ -280,6 +319,23 @@ func (s *Server) handleRevokeToken(w http.ResponseWriter, r *http.Request) {
 }
 
 
+
+func (s *Server) handleVerifyToken(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Token == "" || !s.cfg.ValidateToken(req.Token) {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	writeJSON(w, map[string]string{"status": "ok"})
+}
 
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")

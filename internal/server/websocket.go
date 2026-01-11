@@ -21,9 +21,11 @@ type Hub struct {
 }
 
 type Client struct {
-	hub  *Hub
-	conn *websocket.Conn
-	send chan []byte
+	hub        *Hub
+	conn       *websocket.Conn
+	send       chan []byte
+	remoteAddr string
+	userAgent  string
 }
 
 type Message struct {
@@ -42,7 +44,10 @@ func (h *Hub) Register(c *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.clients[c] = true
-	slog.Debug("client connected", "total", len(h.clients))
+	slog.Info("websocket client connected",
+		"remote_addr", c.remoteAddr,
+		"user_agent", c.userAgent,
+		"total_clients", len(h.clients))
 }
 
 func (h *Hub) Unregister(c *Client) {
@@ -51,7 +56,9 @@ func (h *Hub) Unregister(c *Client) {
 	if _, ok := h.clients[c]; ok {
 		delete(h.clients, c)
 		close(c.send)
-		slog.Debug("client disconnected", "total", len(h.clients))
+		slog.Info("websocket client disconnected",
+			"remote_addr", c.remoteAddr,
+			"total_clients", len(h.clients))
 	}
 }
 
@@ -101,20 +108,23 @@ func (c *Client) writePump() {
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	token := extractToken(r)
 	if token == "" || !s.cfg.ValidateToken(token) {
+		slog.Warn("websocket unauthorized attempt", "remote_addr", r.RemoteAddr)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		slog.Error("websocket upgrade failed", "error", err)
+		slog.Error("websocket upgrade failed", "error", err, "remote_addr", r.RemoteAddr)
 		return
 	}
 
 	client := &Client{
-		hub:  s.hub,
-		conn: conn,
-		send: make(chan []byte, 256),
+		hub:        s.hub,
+		conn:       conn,
+		send:       make(chan []byte, 256),
+		remoteAddr: r.RemoteAddr,
+		userAgent:  r.UserAgent(),
 	}
 
 	s.hub.Register(client)

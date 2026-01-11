@@ -2,7 +2,6 @@ package config
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -22,11 +21,6 @@ func generateTokenValue() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func hashToken(value string) string {
-	h := sha256.Sum256([]byte(value))
-	return hex.EncodeToString(h[:])
-}
-
 func (c *Config) CreateToken(name string) (string, error) {
 	value, err := generateTokenValue()
 	if err != nil {
@@ -34,10 +28,10 @@ func (c *Config) CreateToken(name string) (string, error) {
 	}
 
 	token := Token{
-		ID:         generateTokenID(),
-		Name:       name,
-		ValueHash:  hashToken(value),
-		CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+		ID:        generateTokenID(),
+		Name:      name,
+		Value:     value,
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 		LastUsedAt: "",
 	}
 
@@ -51,9 +45,9 @@ func (c *Config) CreateToken(name string) (string, error) {
 }
 
 func (c *Config) ValidateToken(value string) bool {
-	hash := hashToken(value)
+	// Simple direct comparison - tokens are stored in plaintext in the config file
 	for i := range c.Tokens {
-		if c.Tokens[i].ValueHash == hash {
+		if c.Tokens[i].Value == value {
 			c.Tokens[i].LastUsedAt = time.Now().UTC().Format(time.RFC3339)
 			_ = c.Save()
 			return true
@@ -76,9 +70,6 @@ func (c *Config) RevokeToken(id string) bool {
 func (c *Config) ListTokens() []Token {
 	result := make([]Token, len(c.Tokens))
 	copy(result, c.Tokens)
-	for i := range result {
-		result[i].ValueHash = ""
-	}
 	return result
 }
 

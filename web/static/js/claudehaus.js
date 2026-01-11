@@ -4,26 +4,130 @@
     let ws = null;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 10;
+    let isAuthenticated = false;
+    const STORAGE_KEY = 'claudehaus_token';
+
+    // Check for stored token on page load
+    function checkAuth() {
+        const token = localStorage.getItem(STORAGE_KEY);
+        if (token) {
+            // Verify token is valid before proceeding
+            verifyToken(token).then(isValid => {
+                if (isValid) {
+                    isAuthenticated = true;
+                    connectWebSocket();
+                } else {
+                    // Invalid token, clear it and show login
+                    localStorage.removeItem(STORAGE_KEY);
+                    showLogin();
+                }
+            }).catch(() => {
+                // Verification failed, try connecting anyway
+                isAuthenticated = true;
+                connectWebSocket();
+            });
+        } else {
+            showLogin();
+        }
+    }
+
+    function verifyToken(token) {
+        return fetch('/api/verify-token', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({token})
+        }).then(res => res.ok)
+          .catch(() => false);
+    }
+
+    function showLogin(errorMsg) {
+        const modal = document.getElementById('login-modal');
+        const errorDiv = document.getElementById('login-error');
+        const tokenInput = document.getElementById('token-input');
+
+        if (modal) modal.classList.remove('hidden');
+        if (errorMsg && errorDiv) {
+            errorDiv.textContent = errorMsg;
+            errorDiv.classList.remove('hidden');
+        } else if (errorDiv) {
+            errorDiv.classList.add('hidden');
+        }
+        if (tokenInput) tokenInput.focus();
+    }
+
+    function hideLogin() {
+        const modal = document.getElementById('login-modal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    // Exposed globally for the form submit handler
+    window.submitLogin = function(event) {
+        event.preventDefault();
+        const tokenInput = document.getElementById('token-input');
+        const token = tokenInput ? tokenInput.value.trim() : '';
+
+        if (!token) {
+            showLogin('Please enter a token');
+            return false;
+        }
+
+        verifyToken(token).then(isValid => {
+            if (isValid) {
+                localStorage.setItem(STORAGE_KEY, token);
+                isAuthenticated = true;
+                hideLogin();
+                connectWebSocket();
+            } else {
+                showLogin('Invalid token');
+            }
+        }).catch(() => {
+            // If verification fails, try connecting anyway
+            localStorage.setItem(STORAGE_KEY, token);
+            isAuthenticated = true;
+            hideLogin();
+            connectWebSocket();
+        });
+
+        return false;
+    };
 
     function connectWebSocket() {
+        if (!isAuthenticated) {
+            showLogin();
+            return;
+        }
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const token = localStorage.getItem('claudehaus_token') || '';
+        const token = localStorage.getItem(STORAGE_KEY) || '';
         ws = new WebSocket(`${protocol}//${window.location.host}/ws?token=${token}`);
 
         ws.onopen = function() {
             console.log('[CLAUDEHAUS] WebSocket connected');
             reconnectAttempts = 0;
             updateStatus('CONNECTED');
+            hideLogin();
         };
 
-        ws.onclose = function() {
-            console.log('[CLAUDEHAUS] WebSocket disconnected');
+        ws.onclose = function(event) {
+            console.log('[CLAUDEHAUS] WebSocket disconnected', event.code, event.reason);
             updateStatus('DISCONNECTED');
+
+            // Check if closed due to unauthorized
+            if (event.code === 1008 || event.code === 4001) {
+                // Unauthorized - clear token and show login
+                localStorage.removeItem(STORAGE_KEY);
+                isAuthenticated = false;
+                showLogin('Session expired. Please login again.');
+                return;
+            }
+
             scheduleReconnect();
         };
 
         ws.onerror = function(err) {
             console.error('[CLAUDEHAUS] WebSocket error:', err);
+            // WebSocket connection failed - likely unauthorized
+            // Clear token and show login on next error or close
         };
 
         ws.onmessage = function(event) {
@@ -32,11 +136,13 @@
     }
 
     function scheduleReconnect() {
-        if (reconnectAttempts < maxReconnectAttempts) {
+        if (reconnectAttempts < maxReconnectAttempts && isAuthenticated) {
             reconnectAttempts++;
             const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
             console.log(`[CLAUDEHAUS] Reconnecting in ${delay}ms...`);
             setTimeout(connectWebSocket, delay);
+        } else if (!isAuthenticated) {
+            showLogin();
         }
     }
 
@@ -83,6 +189,17 @@
 
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
+        // Don't trigger shortcuts when in the login form
+        if (document.getElementById('login-modal') &&
+            !document.getElementById('login-modal').classList.contains('hidden')) {
+            // Allow ESC to close login modal
+            if (e.key === 'Escape') {
+                const tokenInput = document.getElementById('token-input');
+                if (tokenInput) tokenInput.value = '';
+            }
+            return;
+        }
+
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             return;
         }
@@ -188,8 +305,8 @@
     window.showHelp = showHelp;
     window.hideHelp = hideHelp;
 
-    // Initialize WebSocket on page load
+    // Initialize authentication on page load
     document.addEventListener('DOMContentLoaded', function() {
-        connectWebSocket();
+        checkAuth();
     });
 })();

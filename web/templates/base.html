@@ -9,6 +9,28 @@
 </head>
 <body>
     {{template "content" .}}
+
+    <div id="login-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <span>AUTHENTICATION REQUIRED</span>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem;">Enter your Claudehaus token to continue.</p>
+                <div id="login-error" class="error-message hidden"></div>
+                <form id="login-form" onsubmit="return submitLogin(event)">
+                    <input type="password" id="token-input" class="input-field" placeholder="Enter token..." autocomplete="current-password" autofocus>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">[CONNECT]</button>
+                    </div>
+                </form>
+                <p class="muted" style="margin-top: 1rem; font-size: 0.85rem;">
+                    Get your token with: <code>claudehaus tokens list</code>
+                </p>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/claudehaus.js"></script>
 </body>
 </html>

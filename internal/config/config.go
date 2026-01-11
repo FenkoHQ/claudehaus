@@ -22,7 +22,7 @@ type ServerConfig struct {
 type Token struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
-	ValueHash  string `json:"value_hash"`
+	Value      string `json:"value"`
 	CreatedAt  string `json:"created_at"`
 	LastUsedAt string `json:"last_used_at"`
 }
@@ -45,7 +45,7 @@ func DefaultConfig() *Config {
 		Tokens:   []Token{},
 		Sessions: make(map[string]SessionMeta),
 		Settings: Settings{
-			ApprovalTimeoutSeconds:  30,
+			ApprovalTimeoutSeconds:  300,
 			ApprovalTimeoutBehavior: "passthrough",
 		},
 	}

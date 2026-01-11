@@ -36,6 +36,19 @@ func (s *Server) Run() error {
 	mux := http.NewServeMux()
 	s.registerRoutes(mux)
 
+	tokens := s.cfg.ListTokens()
+	slog.Info("loaded authentication tokens",
+		"config_path", "~/.claudehaus/config.json",
+		"token_count", len(tokens))
+
+	for _, t := range tokens {
+		if t.Value != "" {
+			slog.Info("  token loaded", "name", t.Name, "id", t.ID)
+		} else {
+			slog.Warn("  token missing value (created before value storage)", "name", t.Name, "id", t.ID)
+		}
+	}
+
 	addr := fmt.Sprintf("%s:%d", s.cfg.Server.Host, s.cfg.Server.Port)
 	slog.Info("starting server", "addr", addr)
 

@@ -22,6 +22,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/tokens", s.authAPIMiddleware(s.handleCreateToken))
 	mux.HandleFunc("GET /api/tokens", s.authAPIMiddleware(s.handleListTokens))
 	mux.HandleFunc("DELETE /api/tokens/{id}", s.authAPIMiddleware(s.handleRevokeToken))
+	mux.HandleFunc("POST /api/verify-token", s.handleVerifyToken)
 
 	mux.HandleFunc("GET /ws", s.handleWebSocket)
 

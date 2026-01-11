@@ -433,3 +433,47 @@ kbd {
     margin: 0;
     border: 1px solid var(--structure-gray);
 }
+
+.input-field {
+    width: 100%;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--structure-gray);
+    background: var(--void-black);
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: var(--fennec-amber);
+}
+
+.form-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.btn-primary {
+    border-color: var(--fennec-amber);
+    color: var(--fennec-amber);
+}
+
+.btn-primary:hover {
+    background: var(--fennec-amber);
+    color: var(--void-black);
+}
+
+.error-message {
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--fox-red);
+    color: var(--fox-red);
+    font-size: 12px;
+}
+
+.error-message.hidden {
+    display: none;
+}
