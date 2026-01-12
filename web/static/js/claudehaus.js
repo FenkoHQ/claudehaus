@@ -183,6 +183,73 @@
         htmx.trigger(document.body, 'refresh');
     }
 
+    function parseMultiChoicePrompts() {
+        // Find all approval prompts and check for multi-choice options
+        const prompts = document.querySelectorAll('.approval-prompt');
+        prompts.forEach(promptEl => {
+            const promptText = promptEl.textContent;
+            const choices = parseChoices(promptText);
+            if (choices.length > 0) {
+                updateApprovalButtons(promptEl.closest('.approval-card'), choices);
+            }
+        });
+    }
+
+    function parseChoices(promptText) {
+        // Parse choice lines like "[Y] Yes", "[N] No", "[1] Option 1"
+        const choices = [];
+        const lines = promptText.split('\n');
+        const choicePattern = /\[([^\]]+)\]\s*(.+)/;
+
+        lines.forEach(line => {
+            const match = line.match(choicePattern);
+            if (match) {
+                const key = match[1].trim();
+                const label = match[2].trim();
+                // Skip if it looks like a timestamp [HH:MM:SS] or boolean true/false
+                if (!/^\d{2}:\d{2}:\d{2}$/.test(key) && key.toLowerCase() !== 'true' && key.toLowerCase() !== 'false') {
+                    choices.push({ key, label });
+                }
+            }
+        });
+
+        return choices;
+    }
+
+    function updateApprovalButtons(approvalCard, choices) {
+        const actionsDiv = approvalCard.querySelector('.approval-actions');
+        if (!actionsDiv) return;
+
+        // Clear existing buttons
+        actionsDiv.innerHTML = '';
+
+        // Create buttons for each choice
+        choices.forEach(choice => {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-choice';
+            btn.textContent = `[${choice.key}] ${choice.label}`;
+            btn.dataset.decision = choice.key;
+            btn.onclick = () => submitDecision(approvalCard, choice.key);
+            actionsDiv.appendChild(btn);
+        });
+    }
+
+    function submitDecision(approvalCard, decision) {
+        const approvalId = approvalCard.dataset.approvalId;
+        if (!approvalId) return;
+
+        fetch(`/api/approvals/${approvalId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + (localStorage.getItem(STORAGE_KEY) || '')
+            },
+            body: JSON.stringify({ decision })
+        }).then(() => {
+            htmx.trigger(document.body, 'refresh');
+        });
+    }
+
     function handleSessionUpdate(msg) {
         htmx.trigger('#sessions', 'refresh');
     }
@@ -316,5 +383,13 @@
                 evt.detail.headers['Authorization'] = 'Bearer ' + token;
             }
         });
+
+        // Parse multi-choice prompts after HTMX swaps
+        document.body.addEventListener('htmx:afterSwap', function() {
+            parseMultiChoicePrompts();
+        });
+
+        // Also parse on initial load
+        parseMultiChoicePrompts();
     });
 })();

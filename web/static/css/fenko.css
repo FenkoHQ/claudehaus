@@ -260,7 +260,7 @@ body {
 
 .event-item {
     display: grid;
-    grid-template-columns: 80px 100px 80px 1fr;
+    grid-template-columns: 90px 120px 100px 1fr;
     gap: 16px;
     padding: 8px 0;
     border-bottom: 1px solid var(--structure-gray);
@@ -495,4 +495,15 @@ kbd {
     border: 1px solid var(--structure-gray);
     max-height: 200px;
     overflow-y: auto;
+}
+
+.btn-choice {
+    border-color: var(--fennec-amber);
+    color: var(--fennec-amber);
+    min-width: 80px;
+}
+
+.btn-choice:hover {
+    background: var(--fennec-amber);
+    color: var(--void-black);
 }
