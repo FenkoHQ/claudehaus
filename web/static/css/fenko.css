@@ -286,6 +286,58 @@ body {
     white-space: nowrap;
 }
 
+.event-details {
+    grid-column: 1 / -1;
+    display: none;
+    padding: 12px;
+    background: var(--structure-gray);
+    margin-top: 8px;
+    border: 1px solid var(--structure-gray);
+}
+
+.event-details.show {
+    display: block;
+}
+
+.event-tool-input {
+    font-family: inherit;
+    font-size: 11px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.event-item {
+    cursor: pointer;
+}
+
+.event-item:hover {
+    background: rgba(255, 158, 69, 0.05);
+}
+
+.event-item.expanded {
+    background: rgba(255, 158, 69, 0.1);
+}
+
+.event-item.active {
+    background: rgba(255, 158, 69, 0.15);
+    border-left: 2px solid var(--fennec-amber);
+}
+
+.event-item::before {
+    content: '▶';
+    font-size: 8px;
+    color: var(--text-muted);
+    margin-right: 8px;
+    transition: transform 0.2s;
+}
+
+.event-item.expanded::before {
+    transform: rotate(90deg);
+}
+
 .modal {
     position: fixed;
     top: 0;

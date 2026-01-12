@@ -254,6 +254,32 @@
         htmx.trigger('#sessions', 'refresh');
     }
 
+    function toggleEventDetails(element) {
+        const expanded = element.getAttribute('data-expanded') === 'true';
+        const details = element.querySelector('.event-details');
+
+        if (expanded) {
+            element.setAttribute('data-expanded', 'false');
+            element.classList.remove('expanded');
+            details.classList.remove('show');
+        } else {
+            element.setAttribute('data-expanded', 'true');
+            element.classList.add('expanded');
+            details.classList.add('show');
+        }
+    }
+
+    function handleEventClick(element, event) {
+        // Remove active class from all events
+        document.querySelectorAll('.event-item.active').forEach(el => {
+            el.classList.remove('active');
+        });
+        // Add active class to clicked event
+        element.classList.add('active');
+        // Toggle details
+        toggleEventDetails(element);
+    }
+
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
         // Don't trigger shortcuts when in the login form
@@ -297,6 +323,9 @@
             case '/':
                 e.preventDefault();
                 focusSearch();
+                break;
+            case 'e':
+                toggleSelectedEvent();
                 break;
             case '1':
             case '2':
@@ -368,9 +397,18 @@
         }
     }
 
+    function toggleSelectedEvent() {
+        const activeEvent = document.querySelector('.event-item.active');
+        if (activeEvent) {
+            toggleEventDetails(activeEvent);
+        }
+    }
+
     // Expose to global scope for onclick handlers
     window.showHelp = showHelp;
     window.hideHelp = hideHelp;
+    window.toggleEventDetails = toggleEventDetails;
+    window.handleEventClick = handleEventClick;
 
     // Initialize authentication on page load
     document.addEventListener('DOMContentLoaded', function() {

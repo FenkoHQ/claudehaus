@@ -44,11 +44,14 @@
 <div class="event-feed">
     <div class="event-feed-header">EVENT FEED</div>
     {{range .Events}}
-    <div class="event-item">
+    <div class="event-item" onclick="handleEventClick(this, event)" data-expanded="false">
         <span class="event-time">{{.Timestamp}}</span>
         <span class="event-type">{{.EventName}}</span>
         <span class="event-tool">{{.ToolName}}</span>
         <span class="event-detail">{{.Detail}}</span>
+        <div class="event-details">
+            {{if .ToolInput}}<pre class="event-tool-input">{{.ToolInput}}</pre>{{end}}
+        </div>
     </div>
     {{else}}
     <div class="muted" style="padding: 8px 0;">No events yet</div>

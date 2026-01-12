@@ -44,6 +44,7 @@ type eventData struct {
 	EventName string
 	ToolName  string
 	Detail    string
+	ToolInput string
 }
 
 func (s *Server) handlePartialSessionDetail(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +80,7 @@ func (s *Server) handlePartialSessionDetail(w http.ResponseWriter, r *http.Reque
 			EventName: e.EventName,
 			ToolName:  e.ToolName,
 			Detail:    e.Detail,
+			ToolInput: e.ToolInput,
 		})
 	}
 
