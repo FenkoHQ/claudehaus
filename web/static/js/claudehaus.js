@@ -167,6 +167,9 @@
             case 'session_update':
                 handleSessionUpdate(msg);
                 break;
+            case 'notification':
+                handleNotification(msg);
+                break;
         }
     }
 
@@ -253,6 +256,63 @@
     function handleSessionUpdate(msg) {
         htmx.trigger('#sessions', 'refresh');
     }
+
+    function handleNotification(msg) {
+        // Only show notification if it's for the current session
+        const currentSessionId = getCurrentSessionId();
+        if (currentSessionId && currentSessionId !== msg.session_id) {
+            return;
+        }
+
+        const container = document.querySelector('.notification-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        const type = msg.data.type || 'info';
+        const label = type === 'idle_prompt' ? 'WAITING FOR INPUT' : type.toUpperCase();
+
+        toast.className = `notification-toast ${type}`;
+        toast.innerHTML = `
+            <div class="notification-header">
+                <span>${label}</span>
+                <button class="notification-close" onclick="dismissNotification(this)">[X]</button>
+            </div>
+            <div class="notification-message">${escapeHtml(msg.data.message || '')}</div>
+        `;
+
+        container.appendChild(toast);
+
+        // Auto-dismiss after 5 seconds (except for idle_prompt which stays until user responds)
+        if (type !== 'idle_prompt') {
+            setTimeout(() => {
+                dismissNotification(toast.querySelector('.notification-close'));
+            }, 5000);
+        }
+    }
+
+    function dismissNotification(btn) {
+        const toast = btn.closest('.notification-toast');
+        if (toast) {
+            toast.classList.add('hiding');
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }
+    }
+
+    function getCurrentSessionId() {
+        const activeSession = document.querySelector('.session-item.active');
+        return activeSession ? activeSession.dataset.sessionId : null;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Expose dismissNotification globally
+    window.dismissNotification = dismissNotification;
 
     function toggleEventDetails(element) {
         const expanded = element.getAttribute('data-expanded') === 'true';

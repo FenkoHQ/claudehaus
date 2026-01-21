@@ -168,6 +168,22 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 		slog.Info("session idle", "session_id", input.SessionID, "event", event)
 		w.WriteHeader(http.StatusOK)
 
+	case "Notification":
+		s.events.AddEvent(input.SessionID, "Notification", "", "", input.Message)
+		s.hub.Broadcast(Message{
+			Type:      "notification",
+			SessionID: input.SessionID,
+			Data: map[string]any{
+				"type":     input.NotificationType,
+				"message":  input.Message,
+			},
+		})
+		slog.Info("notification received",
+			"session_id", input.SessionID,
+			"type", input.NotificationType,
+			"message", input.Message)
+		w.WriteHeader(http.StatusOK)
+
 	default:
 		// Capture all other events (PreToolUse, PostToolUse, etc.) for the web UI
 		if input.ToolName != "" {
