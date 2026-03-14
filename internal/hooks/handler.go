@@ -24,6 +24,7 @@ type HookInput struct {
 
 type ApprovalDecision struct {
 	Behavior string `json:"behavior"`
+	Message  string `json:"message,omitempty"`
 }
 
 type ApprovalResponse struct {
@@ -44,6 +45,7 @@ func NewDenyResponse(message string) ApprovalResponse {
 	resp := ApprovalResponse{}
 	resp.HookSpecificOutput.HookEventName = "PermissionRequest"
 	resp.HookSpecificOutput.Decision.Behavior = "deny"
+	resp.HookSpecificOutput.Decision.Message = message
 	return resp
 }
 

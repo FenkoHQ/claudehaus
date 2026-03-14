@@ -66,3 +66,21 @@ func (s *Store) UpdateStatus(id string, status Status) {
 		sess.LastEventAt = time.Now()
 	}
 }
+
+func (s *Store) TouchSession(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess, ok := s.sessions[id]; ok {
+		sess.LastEventAt = time.Now()
+		sess.Status = StatusActive
+	}
+}
+
+func (s *Store) UpdatePending(id string, hasPending bool, count int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess, ok := s.sessions[id]; ok {
+		sess.HasPending = hasPending
+		sess.PendingCount = count
+	}
+}

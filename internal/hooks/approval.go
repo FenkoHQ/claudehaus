@@ -15,7 +15,6 @@ type PendingApproval struct {
 	ID           string          `json:"id"`
 	SessionID    string          `json:"session_id"`
 	CreatedAt    time.Time       `json:"created_at"`
-	ExpiresAt    time.Time       `json:"expires_at"`
 	ToolName     string          `json:"tool_name"`
 	ToolInput    json.RawMessage `json:"tool_input"`
 	Prompt       string          `json:"prompt"`

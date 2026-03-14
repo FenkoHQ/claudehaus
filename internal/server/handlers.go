@@ -52,8 +52,7 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 		slog.Debug("existing session found", "session_id", input.SessionID, "nickname", sess.Nickname)
 	}
 
-	sess.LastEventAt = time.Now()
-	sess.Status = session.StatusActive
+	s.sessions.TouchSession(input.SessionID)
 
 	s.hub.Broadcast(Message{
 		Type:      "event",
@@ -81,13 +80,11 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 
 	case "PermissionRequest":
 		approvalID := generateID()
-		timeout := time.Duration(s.cfg.Settings.ApprovalTimeoutSeconds) * time.Second
 
 		pending := &hooks.PendingApproval{
 			ID:           approvalID,
 			SessionID:    input.SessionID,
 			CreatedAt:    time.Now(),
-			ExpiresAt:    time.Now().Add(timeout),
 			ToolName:     input.ToolName,
 			ToolInput:    input.ToolInput,
 			Prompt:       input.Prompt,
@@ -95,14 +92,12 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		s.approvals.Add(pending)
-		sess.HasPending = true
-		sess.PendingCount = s.approvals.CountBySession(input.SessionID)
+		s.sessions.UpdatePending(input.SessionID, true, s.approvals.CountBySession(input.SessionID))
 
 		slog.Info("permission request pending",
 			"approval_id", approvalID,
 			"session_id", input.SessionID,
-			"tool_name", input.ToolName,
-			"timeout_seconds", s.cfg.Settings.ApprovalTimeoutSeconds)
+			"tool_name", input.ToolName)
 
 		s.hub.Broadcast(Message{
 			Type:      "approval_request",
@@ -111,15 +106,16 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 				"approval_id": approvalID,
 				"tool_name":   input.ToolName,
 				"tool_input":  input.ToolInput,
-				"expires_at":  pending.ExpiresAt,
 			},
 		})
 
+		// Block until: web UI sends a decision, or Claude Code disconnects
+		// (user answered in terminal / HTTP hook timed out on their side).
 		select {
 		case decision := <-pending.ResponseChan:
 			s.approvals.Remove(approvalID)
-			sess.PendingCount = s.approvals.CountBySession(input.SessionID)
-			sess.HasPending = sess.PendingCount > 0
+			count := s.approvals.CountBySession(input.SessionID)
+			s.sessions.UpdatePending(input.SessionID, count > 0, count)
 
 			slog.Info("permission request resolved",
 				"approval_id", approvalID,
@@ -127,7 +123,7 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 				"message", decision.Message)
 
 			s.events.AddEvent(input.SessionID, "PermissionRequest", input.ToolName, string(input.ToolInput),
-				"Approved: "+decision.Behavior)
+				decision.Behavior)
 
 			var resp hooks.ApprovalResponse
 			if decision.Behavior == "allow" {
@@ -137,28 +133,19 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 			}
 			writeJSON(w, resp)
 
-		case <-time.After(timeout):
+		case <-r.Context().Done():
+			// Client disconnected — user answered in terminal or Claude Code moved on.
 			s.approvals.Remove(approvalID)
-			sess.PendingCount = s.approvals.CountBySession(input.SessionID)
-			sess.HasPending = sess.PendingCount > 0
+			count := s.approvals.CountBySession(input.SessionID)
+			s.sessions.UpdatePending(input.SessionID, count > 0, count)
 
-			slog.Warn("permission request timed out",
-				"approval_id", approvalID,
-				"timeout_behavior", s.cfg.Settings.ApprovalTimeoutBehavior)
+			slog.Info("permission request cancelled (client disconnected)",
+				"approval_id", approvalID)
 
 			s.events.AddEvent(input.SessionID, "PermissionRequest", input.ToolName, string(input.ToolInput),
-				"Timed out")
+				"Answered elsewhere")
 
-			s.hub.Broadcast(Message{Type: "approval_resolved", Data: map[string]any{"approval_id": approvalID, "decision": "timeout"}})
-
-			switch s.cfg.Settings.ApprovalTimeoutBehavior {
-			case "allow":
-				writeJSON(w, hooks.NewAllowResponse())
-			case "deny":
-				writeJSON(w, hooks.NewDenyResponse("Approval timed out"))
-			default:
-				w.WriteHeader(http.StatusOK)
-			}
+			s.hub.Broadcast(Message{Type: "approval_resolved", Data: map[string]any{"approval_id": approvalID, "decision": "cancelled"}})
 		}
 
 	case "Stop", "SubagentStop":

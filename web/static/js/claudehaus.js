@@ -7,22 +7,55 @@
     let isAuthenticated = false;
     const STORAGE_KEY = 'claudehaus_token';
 
-    // Check for stored token on page load
+    // ================================================================
+    // THEME
+    // ================================================================
+    function getTheme() {
+        const stored = localStorage.getItem('fenko-theme');
+        if (stored) return stored;
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('fenko-theme', theme);
+        const icon = document.getElementById('theme-icon');
+        if (icon) {
+            icon.textContent = theme === 'dark' ? '\u263E' : '\u2600';
+        }
+    }
+
+    window.toggleTheme = function() {
+        const current = getTheme();
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+    };
+
+    // ================================================================
+    // SETUP TABS
+    // ================================================================
+    window.switchSetupTab = function(tab, btn) {
+        document.querySelectorAll('.setup-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.setup-tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        const content = document.getElementById('setup-' + tab);
+        if (content) content.classList.add('active');
+    };
+
+    // ================================================================
+    // AUTH
+    // ================================================================
     function checkAuth() {
         const token = localStorage.getItem(STORAGE_KEY);
         if (token) {
-            // Verify token is valid before proceeding
             verifyToken(token).then(isValid => {
                 if (isValid) {
                     isAuthenticated = true;
                     connectWebSocket();
                 } else {
-                    // Invalid token, clear it and show login
                     localStorage.removeItem(STORAGE_KEY);
                     showLogin();
                 }
             }).catch(() => {
-                // Verification failed, try connecting anyway
                 isAuthenticated = true;
                 connectWebSocket();
             });
@@ -60,7 +93,6 @@
         if (modal) modal.classList.add('hidden');
     }
 
-    // Exposed globally for the form submit handler
     window.submitLogin = function(event) {
         event.preventDefault();
         const tokenInput = document.getElementById('token-input');
@@ -81,7 +113,6 @@
                 showLogin('Invalid token');
             }
         }).catch(() => {
-            // If verification fails, try connecting anyway
             localStorage.setItem(STORAGE_KEY, token);
             isAuthenticated = true;
             hideLogin();
@@ -91,6 +122,9 @@
         return false;
     };
 
+    // ================================================================
+    // WEBSOCKET
+    // ================================================================
     function connectWebSocket() {
         if (!isAuthenticated) {
             showLogin();
@@ -102,19 +136,15 @@
         ws = new WebSocket(`${protocol}//${window.location.host}/ws?token=${token}`);
 
         ws.onopen = function() {
-            console.log('[CLAUDEHAUS] WebSocket connected');
             reconnectAttempts = 0;
             updateStatus('CONNECTED');
             hideLogin();
         };
 
         ws.onclose = function(event) {
-            console.log('[CLAUDEHAUS] WebSocket disconnected', event.code, event.reason);
             updateStatus('DISCONNECTED');
 
-            // Check if closed due to unauthorized
             if (event.code === 1008 || event.code === 4001) {
-                // Unauthorized - clear token and show login
                 localStorage.removeItem(STORAGE_KEY);
                 isAuthenticated = false;
                 showLogin('Session expired. Please login again.');
@@ -124,11 +154,7 @@
             scheduleReconnect();
         };
 
-        ws.onerror = function(err) {
-            console.error('[CLAUDEHAUS] WebSocket error:', err);
-            // WebSocket connection failed - likely unauthorized
-            // Clear token and show login on next error or close
-        };
+        ws.onerror = function() {};
 
         ws.onmessage = function(event) {
             handleMessage(JSON.parse(event.data));
@@ -139,7 +165,6 @@
         if (reconnectAttempts < maxReconnectAttempts && isAuthenticated) {
             reconnectAttempts++;
             const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-            console.log(`[CLAUDEHAUS] Reconnecting in ${delay}ms...`);
             setTimeout(connectWebSocket, delay);
         } else if (!isAuthenticated) {
             showLogin();
@@ -149,23 +174,27 @@
     function updateStatus(status) {
         const statusBar = document.querySelector('.status-bar span');
         if (statusBar) {
-            statusBar.textContent = `> ${status}`;
+            statusBar.textContent = '> ' + status;
         }
     }
 
+    // ================================================================
+    // MESSAGE HANDLING
+    // ================================================================
     function handleMessage(msg) {
         switch (msg.type) {
             case 'event':
-                handleEvent(msg);
+                htmx.trigger(document.body, 'refresh');
                 break;
             case 'approval_request':
-                handleApprovalRequest(msg);
+                htmx.trigger('#sessions', 'refresh');
+                htmx.trigger(document.body, 'refresh');
                 break;
             case 'approval_resolved':
-                handleApprovalResolved(msg);
+                htmx.trigger(document.body, 'refresh');
                 break;
             case 'session_update':
-                handleSessionUpdate(msg);
+                htmx.trigger('#sessions', 'refresh');
                 break;
             case 'notification':
                 handleNotification(msg);
@@ -173,21 +202,10 @@
         }
     }
 
-    function handleEvent(msg) {
-        htmx.trigger(document.body, 'refresh');
-    }
-
-    function handleApprovalRequest(msg) {
-        htmx.trigger('#sessions', 'refresh');
-        htmx.trigger(document.body, 'refresh');
-    }
-
-    function handleApprovalResolved(msg) {
-        htmx.trigger(document.body, 'refresh');
-    }
-
+    // ================================================================
+    // MULTI-CHOICE APPROVALS
+    // ================================================================
     function parseMultiChoicePrompts() {
-        // Find all approval prompts and check for multi-choice options
         const prompts = document.querySelectorAll('.approval-prompt');
         prompts.forEach(promptEl => {
             const promptText = promptEl.textContent;
@@ -199,7 +217,6 @@
     }
 
     function parseChoices(promptText) {
-        // Parse choice lines like "[Y] Yes", "[N] No", "[1] Option 1"
         const choices = [];
         const lines = promptText.split('\n');
         const choicePattern = /\[([^\]]+)\]\s*(.+)/;
@@ -209,7 +226,6 @@
             if (match) {
                 const key = match[1].trim();
                 const label = match[2].trim();
-                // Skip if it looks like a timestamp [HH:MM:SS] or boolean true/false
                 if (!/^\d{2}:\d{2}:\d{2}$/.test(key) && key.toLowerCase() !== 'true' && key.toLowerCase() !== 'false') {
                     choices.push({ key, label });
                 }
@@ -223,14 +239,12 @@
         const actionsDiv = approvalCard.querySelector('.approval-actions');
         if (!actionsDiv) return;
 
-        // Clear existing buttons
         actionsDiv.innerHTML = '';
 
-        // Create buttons for each choice
         choices.forEach(choice => {
             const btn = document.createElement('button');
             btn.className = 'btn btn-choice';
-            btn.textContent = `[${choice.key}] ${choice.label}`;
+            btn.textContent = '[' + choice.key + '] ' + choice.label;
             btn.dataset.decision = choice.key;
             btn.onclick = () => submitDecision(approvalCard, choice.key);
             actionsDiv.appendChild(btn);
@@ -241,24 +255,22 @@
         const approvalId = approvalCard.dataset.approvalId;
         if (!approvalId) return;
 
-        fetch(`/api/approvals/${approvalId}`, {
+        fetch('/api/approvals/' + approvalId, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + (localStorage.getItem(STORAGE_KEY) || '')
             },
-            body: JSON.stringify({ decision })
+            body: JSON.stringify({ decision: decision })
         }).then(() => {
             htmx.trigger(document.body, 'refresh');
         });
     }
 
-    function handleSessionUpdate(msg) {
-        htmx.trigger('#sessions', 'refresh');
-    }
-
+    // ================================================================
+    // NOTIFICATIONS
+    // ================================================================
     function handleNotification(msg) {
-        // Only show notification if it's for the current session
         const currentSessionId = getCurrentSessionId();
         if (currentSessionId && currentSessionId !== msg.session_id) {
             return;
@@ -269,20 +281,18 @@
 
         const toast = document.createElement('div');
         const type = msg.data.type || 'info';
-        const label = type === 'idle_prompt' ? 'WAITING FOR INPUT' : type.toUpperCase();
+        const label = type === 'idle_prompt' ? 'Waiting for input' : type.replace(/_/g, ' ');
 
-        toast.className = `notification-toast ${type}`;
-        toast.innerHTML = `
-            <div class="notification-header">
-                <span>${label}</span>
-                <button class="notification-close" onclick="dismissNotification(this)">[X]</button>
-            </div>
-            <div class="notification-message">${escapeHtml(msg.data.message || '')}</div>
-        `;
+        toast.className = 'notification-toast ' + type;
+        toast.innerHTML =
+            '<div class="notification-header">' +
+                '<span>' + escapeHtml(label) + '</span>' +
+                '<button class="notification-close" onclick="dismissNotification(this)">&times;</button>' +
+            '</div>' +
+            '<div class="notification-message">' + escapeHtml(msg.data.message || '') + '</div>';
 
         container.appendChild(toast);
 
-        // Auto-dismiss after 5 seconds (except for idle_prompt which stays until user responds)
         if (type !== 'idle_prompt') {
             setTimeout(() => {
                 dismissNotification(toast.querySelector('.notification-close'));
@@ -294,9 +304,7 @@
         const toast = btn.closest('.notification-toast');
         if (toast) {
             toast.classList.add('hiding');
-            setTimeout(() => {
-                toast.remove();
-            }, 300);
+            setTimeout(() => { toast.remove(); }, 200);
         }
     }
 
@@ -311,9 +319,11 @@
         return div.innerHTML;
     }
 
-    // Expose dismissNotification globally
     window.dismissNotification = dismissNotification;
 
+    // ================================================================
+    // EVENT DETAILS
+    // ================================================================
     function toggleEventDetails(element) {
         const expanded = element.getAttribute('data-expanded') === 'true';
         const details = element.querySelector('.event-details');
@@ -330,22 +340,19 @@
     }
 
     function handleEventClick(element, event) {
-        // Remove active class from all events
         document.querySelectorAll('.event-item.active').forEach(el => {
             el.classList.remove('active');
         });
-        // Add active class to clicked event
         element.classList.add('active');
-        // Toggle details
         toggleEventDetails(element);
     }
 
-    // Keyboard shortcuts
+    // ================================================================
+    // KEYBOARD SHORTCUTS
+    // ================================================================
     document.addEventListener('keydown', function(e) {
-        // Don't trigger shortcuts when in the login form
         if (document.getElementById('login-modal') &&
             !document.getElementById('login-modal').classList.contains('hidden')) {
-            // Allow ESC to close login modal
             if (e.key === 'Escape') {
                 const tokenInput = document.getElementById('token-input');
                 if (tokenInput) tokenInput.value = '';
@@ -387,15 +394,8 @@
             case 'e':
                 toggleSelectedEvent();
                 break;
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
+            case '1': case '2': case '3': case '4': case '5':
+            case '6': case '7': case '8': case '9':
                 selectSession(parseInt(e.key) - 1);
                 break;
         }
@@ -428,9 +428,7 @@
             items[0].click();
         } else if (active) {
             const idx = Array.from(items).indexOf(active);
-            if (idx < items.length - 1) {
-                items[idx + 1].click();
-            }
+            if (idx < items.length - 1) items[idx + 1].click();
         }
     }
 
@@ -439,9 +437,7 @@
         const active = document.querySelector('.session-item.active');
         if (active) {
             const idx = Array.from(items).indexOf(active);
-            if (idx > 0) {
-                items[idx - 1].click();
-            }
+            if (idx > 0) items[idx - 1].click();
         }
     }
 
@@ -452,29 +448,29 @@
 
     function selectSession(idx) {
         const items = document.querySelectorAll('.session-item');
-        if (items[idx]) {
-            items[idx].click();
-        }
+        if (items[idx]) items[idx].click();
     }
 
     function toggleSelectedEvent() {
         const activeEvent = document.querySelector('.event-item.active');
-        if (activeEvent) {
-            toggleEventDetails(activeEvent);
-        }
+        if (activeEvent) toggleEventDetails(activeEvent);
     }
 
-    // Expose to global scope for onclick handlers
+    // Expose to global scope
     window.showHelp = showHelp;
     window.hideHelp = hideHelp;
     window.toggleEventDetails = toggleEventDetails;
     window.handleEventClick = handleEventClick;
 
-    // Initialize authentication on page load
+    // ================================================================
+    // INIT
+    // ================================================================
     document.addEventListener('DOMContentLoaded', function() {
+        // Apply theme icon
+        applyTheme(getTheme());
+
         checkAuth();
 
-        // Add token to all HTMX requests
         document.body.addEventListener('htmx:configRequest', function(evt) {
             const token = localStorage.getItem(STORAGE_KEY);
             if (token) {
@@ -482,12 +478,10 @@
             }
         });
 
-        // Parse multi-choice prompts after HTMX swaps
         document.body.addEventListener('htmx:afterSwap', function() {
             parseMultiChoicePrompts();
         });
 
-        // Also parse on initial load
         parseMultiChoicePrompts();
     });
 })();

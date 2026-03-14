@@ -1,48 +1,107 @@
 {{define "content"}}
 <div class="layout">
     <header class="header">
-        <h1 class="logo">░▒▓ CLAUDEHAUS ▓▒░</h1>
+        <h1 class="logo">CLAUDEHAUS</h1>
         <div class="header-actions">
-            <button class="btn btn-ghost" onclick="showHelp()">[?] HELP</button>
-            <a href="/settings" class="btn btn-ghost">[⚙] CONFIG</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">
+                <span id="theme-icon">&#9790;</span>
+            </button>
+            <button class="btn btn-ghost" onclick="showHelp()">? Help</button>
+            <a href="/settings" class="btn btn-ghost">Settings</a>
         </div>
     </header>
-    
+
     <div class="main">
         <aside class="sidebar" id="session-list">
-            <div class="sidebar-header">SESSIONS</div>
+            <div class="sidebar-header">Sessions</div>
             <div class="sidebar-divider"></div>
             <div id="sessions" hx-get="/partials/sessions" hx-trigger="load, refresh from:body" hx-swap="innerHTML">
-                <div class="loading">LOADING...</div>
+                <div class="loading">Loading</div>
             </div>
         </aside>
-        
+
         <main class="content" id="session-detail">
             <div class="empty-state">
-                <p>SELECT A SESSION</p>
-                <p class="muted">or wait for Claude Code to connect</p>
-                
+                <p>Select a session</p>
+                <p class="muted" style="margin-top: var(--space-1);">or wait for Claude Code to connect</p>
+
                 <div class="setup-guide">
-                    <div class="setup-header">─ SETUP GUIDE ─</div>
-                    
-                    <div class="setup-step">
-                        <span class="step-num">[1]</span>
-                        <span>Set environment variables in your shell:</span>
+                    <div class="setup-header">Setup Guide</div>
+
+                    <div class="setup-tabs">
+                        <button class="setup-tab active" onclick="switchSetupTab('http', this)">
+                            HTTP Hook <span class="setup-badge recommended">Recommended</span>
+                        </button>
+                        <button class="setup-tab" onclick="switchSetupTab('command', this)">
+                            Command Hook
+                        </button>
                     </div>
-                    <pre class="setup-code">export CLAUDEHAUS_TOKEN="your-token-here"
+
+                    <div id="setup-http" class="setup-tab-content active">
+                        <div class="setup-step">
+                            <span class="step-num">1.</span>
+                            <span>Add HTTP hooks to <code class="mono">~/.claude/settings.json</code>:</span>
+                        </div>
+                        <pre class="setup-code">{
+  "hooks": {
+    "PreToolUse": [{ "matcher": "*", "hooks": [
+      { "type": "http",
+        "url": "http://127.0.0.1:8420/api/hooks/PreToolUse",
+        "headers": {"Authorization": "Bearer $CLAUDEHAUS_TOKEN"},
+        "allowedEnvVars": ["CLAUDEHAUS_TOKEN"] }
+    ]}],
+    "PostToolUse": [{ "matcher": "*", "hooks": [
+      { "type": "http",
+        "url": "http://127.0.0.1:8420/api/hooks/PostToolUse",
+        "headers": {"Authorization": "Bearer $CLAUDEHAUS_TOKEN"},
+        "allowedEnvVars": ["CLAUDEHAUS_TOKEN"] }
+    ]}],
+    "PermissionRequest": [{ "matcher": "*", "hooks": [
+      { "type": "http",
+        "url": "http://127.0.0.1:8420/api/hooks/PermissionRequest",
+        "headers": {"Authorization": "Bearer $CLAUDEHAUS_TOKEN"},
+        "allowedEnvVars": ["CLAUDEHAUS_TOKEN"],
+        "timeout": 300 }
+    ]}],
+    "Stop": [{ "hooks": [
+      { "type": "http",
+        "url": "http://127.0.0.1:8420/api/hooks/Stop",
+        "headers": {"Authorization": "Bearer $CLAUDEHAUS_TOKEN"},
+        "allowedEnvVars": ["CLAUDEHAUS_TOKEN"] }
+    ]}]
+  }
+}</pre>
+
+                        <div class="setup-step">
+                            <span class="step-num">2.</span>
+                            <span>Set your token in the shell:</span>
+                        </div>
+                        <pre class="setup-code">export CLAUDEHAUS_TOKEN="your-token-here"</pre>
+
+                        <p class="muted" style="margin-top: var(--space-4); font-size: 12px;">
+                            No script required. Claude Code posts directly to the server.
+                        </p>
+                    </div>
+
+                    <div id="setup-command" class="setup-tab-content">
+                        <div class="setup-step">
+                            <span class="step-num">1.</span>
+                            <span>Set environment variables:</span>
+                        </div>
+                        <pre class="setup-code">export CLAUDEHAUS_TOKEN="your-token-here"
 export CLAUDEHAUS_URL="http://127.0.0.1:8420"</pre>
-                    
-                    <div class="setup-step">
-                        <span class="step-num">[2]</span>
-                        <span>Copy the hook script to your PATH:</span>
-                    </div>
-                    <pre class="setup-code">cp scripts/claudehaus-hook ~/.local/bin/</pre>
-                    
-                    <div class="setup-step">
-                        <span class="step-num">[3]</span>
-                        <span>Add hooks to ~/.claude/settings.json:</span>
-                    </div>
-                    <pre class="setup-code">{
+
+                        <div class="setup-step">
+                            <span class="step-num">2.</span>
+                            <span>Copy the hook script to your PATH:</span>
+                        </div>
+                        <pre class="setup-code">cp scripts/claudehaus-hook ~/.local/bin/</pre>
+
+                        <div class="setup-step">
+                            <span class="step-num">3.</span>
+                            <span>Add hooks to <code class="mono">~/.claude/settings.json</code>:</span>
+                        </div>
+                        <pre class="setup-code">{
   "hooks": {
     "PermissionRequest": [{ "matcher": "*", "hooks": [
       { "type": "command", "command": "claudehaus-hook" }
@@ -50,43 +109,51 @@ export CLAUDEHAUS_URL="http://127.0.0.1:8420"</pre>
     "PreToolUse": [{ "matcher": "*", "hooks": [
       { "type": "command", "command": "claudehaus-hook" }
     ]}],
+    "Notification": [{ "hooks": [
+      { "type": "command", "command": "claudehaus-hook" }
+    ]}],
     "SessionStart": [{ "hooks": [
       { "type": "command", "command": "claudehaus-hook" }
     ]}]
   }
 }</pre>
-                    
-                    <div class="setup-step">
-                        <span class="step-num">[4]</span>
-                        <span>To chain with existing hooks, use --chain:</span>
+
+                        <div class="setup-step">
+                            <span class="step-num">4.</span>
+                            <span>To chain with existing hooks:</span>
+                        </div>
+                        <pre class="setup-code">"command": "claudehaus-hook --chain '/path/to/your-hook.sh'"</pre>
+
+                        <p class="muted" style="margin-top: var(--space-4); font-size: 12px;">
+                            Command hooks support all events including Notification and SessionStart.
+                        </p>
                     </div>
-                    <pre class="setup-code">"command": "claudehaus-hook --chain '/path/to/your-hook.sh'"</pre>
                 </div>
             </div>
         </main>
     </div>
-    
+
     <footer class="status-bar">
         <span>&gt; READY</span>
-        <span class="muted">PRESS ? FOR SHORTCUTS</span>
+        <span class="muted">Press ? for shortcuts</span>
     </footer>
 </div>
 
 <div id="help-modal" class="modal hidden">
     <div class="modal-content">
         <div class="modal-header">
-            <span>KEYBOARD SHORTCUTS</span>
-            <button class="btn btn-ghost" onclick="hideHelp()">[X]</button>
+            <span>Keyboard Shortcuts</span>
+            <button class="btn btn-ghost" onclick="hideHelp()" style="font-size: 16px;">&times;</button>
         </div>
         <div class="modal-body">
-            <div class="shortcut"><kbd>y</kbd> / <kbd>a</kbd> Allow pending request</div>
-            <div class="shortcut"><kbd>n</kbd> / <kbd>d</kbd> Deny pending request</div>
-            <div class="shortcut"><kbd>j</kbd> / <kbd>↓</kbd> Navigate down</div>
-            <div class="shortcut"><kbd>k</kbd> / <kbd>↑</kbd> Navigate up</div>
-            <div class="shortcut"><kbd>1-9</kbd> Quick-switch sessions</div>
-            <div class="shortcut"><kbd>e</kbd> Expand/collapse event</div>
-            <div class="shortcut"><kbd>/</kbd> Focus search</div>
-            <div class="shortcut"><kbd>Esc</kbd> Close modal</div>
+            <div class="shortcut"><kbd>y</kbd> <kbd>a</kbd> <span>Allow pending request</span></div>
+            <div class="shortcut"><kbd>n</kbd> <kbd>d</kbd> <span>Deny pending request</span></div>
+            <div class="shortcut"><kbd>j</kbd> <kbd>&darr;</kbd> <span>Navigate down</span></div>
+            <div class="shortcut"><kbd>k</kbd> <kbd>&uarr;</kbd> <span>Navigate up</span></div>
+            <div class="shortcut"><kbd>1</kbd>-<kbd>9</kbd> <span>Quick-switch sessions</span></div>
+            <div class="shortcut"><kbd>e</kbd> <span>Expand/collapse event</span></div>
+            <div class="shortcut"><kbd>/</kbd> <span>Focus search</span></div>
+            <div class="shortcut"><kbd>Esc</kbd> <span>Close modal</span></div>
         </div>
     </div>
 </div>

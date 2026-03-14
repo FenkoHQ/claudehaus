@@ -4,9 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CLAUDEHAUS</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%230A0A0A' width='32' height='32'/><path d='M8 6 L8 26 L12 26 L12 18 L20 18 L20 14 L12 14 L12 10 L24 10 L24 6 Z' fill='%23FF9E45'/><rect x='6' y='6' width='20' height='20' fill='none' stroke='%23FF9E45' stroke-width='1'/><rect x='4' y='4' width='24' height='24' fill='none' stroke='%23333' stroke-width='1'/></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%230D1117' width='32' height='32' rx='4'/><path d='M8 6 L8 26 L12 26 L12 18 L20 18 L20 14 L12 14 L12 10 L24 10 L24 6 Z' fill='%23F5A623'/></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/fenko.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script>
+        // Apply theme before render to prevent flash
+        (function() {
+            const stored = localStorage.getItem('fenko-theme');
+            if (stored) {
+                document.documentElement.setAttribute('data-theme', stored);
+            }
+        })();
+    </script>
 </head>
 <body>
     {{template "content" .}}
@@ -14,19 +26,19 @@
     <div id="login-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
-                <span>AUTHENTICATION REQUIRED</span>
+                <span>Authentication Required</span>
             </div>
             <div class="modal-body">
-                <p style="margin-bottom: 1rem;">Enter your Claudehaus token to continue.</p>
+                <p style="margin-bottom: 1rem; color: var(--text-secondary);">Enter your Claudehaus token to continue.</p>
                 <div id="login-error" class="error-message hidden"></div>
                 <form id="login-form" onsubmit="return submitLogin(event)">
-                    <input type="password" id="token-input" class="input-field" placeholder="Enter token..." autocomplete="current-password" autofocus>
+                    <input type="password" id="token-input" class="input-field" placeholder="Paste token here..." autocomplete="current-password" autofocus>
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">[CONNECT]</button>
+                        <button type="submit" class="btn btn-primary">Connect</button>
                     </div>
                 </form>
-                <p class="muted" style="margin-top: 1rem; font-size: 0.85rem;">
-                    Get your token with: <code>claudehaus tokens list</code>
+                <p class="muted" style="margin-top: 1rem; font-size: 12px;">
+                    Get your token: <code class="mono" style="color: var(--accent-primary);">claudehaus tokens list</code>
                 </p>
             </div>
         </div>

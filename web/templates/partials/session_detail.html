@@ -5,10 +5,10 @@
      hx-swap="outerHTML">
 <div class="session-header">
     <div class="session-title">
-        <span>SESSION: [ {{.Session.Nickname}} ]</span>
-        <span class="session-status {{.Session.Status}}">● {{.Session.Status}}</span>
+        <span>{{.Session.Nickname}}</span>
+        <span class="session-status {{.Session.Status}}">{{.Session.Status}}</span>
     </div>
-    <div class="session-path">PATH: {{.Session.ProjectDir}}</div>
+    <div class="session-path">{{.Session.ProjectDir}}</div>
 </div>
 
 <div id="notifications" class="notification-container"></div>
@@ -17,34 +17,34 @@
 
 {{range .Approvals}}
 <div class="approval-card" data-approval-id="{{.ID}}">
-    <div class="approval-header">─ PENDING APPROVAL ─</div>
+    <div class="approval-header">Pending Approval</div>
     {{if .Prompt}}
-    <div class="approval-prompt-label">PROMPT:</div>
+    <div class="approval-prompt-label">Prompt</div>
     <div class="approval-prompt">{{.Prompt}}</div>
     <div class="divider"></div>
     {{end}}
-    <div class="approval-tool">TOOL: {{.ToolName}}</div>
-    <pre class="approval-command">&gt; {{.ToolInput}}</pre>
+    <div class="approval-tool">Tool: {{.ToolName}}</div>
+    <pre class="approval-command">{{.ToolInput}}</pre>
     <div class="approval-actions">
         <button class="btn btn-allow"
                 hx-post="/api/approvals/{{.ID}}"
                 hx-vals='{"decision":"allow"}'
                 hx-swap="none"
-                hx-on::after-request="htmx.trigger(document.body, 'refresh')">[Y] ALLOW</button>
+                hx-on::after-request="htmx.trigger(document.body, 'refresh')">Allow</button>
         <button class="btn btn-deny"
                 hx-post="/api/approvals/{{.ID}}"
                 hx-vals='{"decision":"deny"}'
                 hx-swap="none"
-                hx-on::after-request="htmx.trigger(document.body, 'refresh')">[N] DENY</button>
+                hx-on::after-request="htmx.trigger(document.body, 'refresh')">Deny</button>
     </div>
-    <div class="approval-timeout">TIMEOUT: {{.TimeRemaining}}s remaining</div>
+    <div class="approval-timeout">Waiting for decision...</div>
 </div>
 {{end}}
 
 <div class="divider"></div>
 
 <div class="event-feed">
-    <div class="event-feed-header">EVENT FEED</div>
+    <div class="event-feed-header">Event Feed</div>
     {{range .Events}}
     <div class="event-item" onclick="handleEventClick(this, event)" data-expanded="false">
         <span class="event-time">{{.Timestamp}}</span>
@@ -56,7 +56,7 @@
         </div>
     </div>
     {{else}}
-    <div class="muted" style="padding: 8px 0;">No events yet</div>
+    <div class="muted" style="padding: var(--space-2) 0; font-size: 13px;">No events yet</div>
     {{end}}
 </div>
 </div>

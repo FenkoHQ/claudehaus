@@ -3,7 +3,6 @@ package server
 import (
 	"html/template"
 	"net/http"
-	"time"
 )
 
 var partialTemplates *template.Template
@@ -32,11 +31,10 @@ type sessionDetailData struct {
 }
 
 type approvalData struct {
-	ID            string
-	ToolName      string
-	ToolInput     string
-	Prompt        string
-	TimeRemaining int
+	ID        string
+	ToolName  string
+	ToolInput string
+	Prompt    string
 }
 
 type eventData struct {
@@ -59,16 +57,11 @@ func (s *Server) handlePartialSessionDetail(w http.ResponseWriter, r *http.Reque
 	pendingApprovals := s.approvals.GetBySession(id)
 	approvals := make([]approvalData, 0, len(pendingApprovals))
 	for _, p := range pendingApprovals {
-		remaining := int(time.Until(p.ExpiresAt).Seconds())
-		if remaining < 0 {
-			remaining = 0
-		}
 		approvals = append(approvals, approvalData{
-			ID:            p.ID,
-			ToolName:      p.ToolName,
-			ToolInput:     string(p.ToolInput),
-			Prompt:        p.Prompt,
-			TimeRemaining: remaining,
+			ID:        p.ID,
+			ToolName:  p.ToolName,
+			ToolInput: string(p.ToolInput),
+			Prompt:    p.Prompt,
 		})
 	}
 

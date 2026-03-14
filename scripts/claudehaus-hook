@@ -40,7 +40,7 @@ done
 if [[ -z "$CLAUDEHAUS_TOKEN" ]]; then
     CONFIG_FILE="$HOME/.claudehaus/config.json"
     if [[ -f "$CONFIG_FILE" ]]; then
-        CLAUDEHAUS_TOKEN=$(grep -o '"value_hash"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | head -1 | cut -d'"' -f4 || true)
+        CLAUDEHAUS_TOKEN=$(grep -o '"value"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | head -1 | cut -d'"' -f4 || true)
     fi
 fi
 
