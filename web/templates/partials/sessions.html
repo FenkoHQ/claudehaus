@@ -1,12 +1,14 @@
 {{define "sessions"}}
 {{range .}}
-<div class="session-item {{if .HasPending}}pending{{end}}" 
+<div class="session-item {{if .HasPending}}pending{{end}}"
      data-session-id="{{.ID}}"
+     data-last-event="{{.LastEventAt.Unix}}"
      hx-get="/partials/session/{{.ID}}"
      hx-target="#session-detail"
      hx-swap="innerHTML">
     <span class="status-dot {{.Status}}"></span>
     <span class="session-name">{{.Nickname}}</span>
+    <span class="session-time"></span>
 </div>
 {{else}}
 <div class="empty-state">

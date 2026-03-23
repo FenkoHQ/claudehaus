@@ -456,11 +456,40 @@
         if (activeEvent) toggleEventDetails(activeEvent);
     }
 
+    // ================================================================
+    // MOBILE NAVIGATION
+    // ================================================================
+    window.closeMobileDetail = function() {
+        document.querySelector('.layout').classList.remove('mobile-detail');
+    };
+
     // Expose to global scope
     window.showHelp = showHelp;
     window.hideHelp = hideHelp;
     window.toggleEventDetails = toggleEventDetails;
     window.handleEventClick = handleEventClick;
+
+    // ================================================================
+    // SESSION TIMERS
+    // ================================================================
+    function formatSecondsAgo(unix) {
+        if (!unix || unix <= 0) return '';
+        const secs = Math.floor(Date.now() / 1000) - unix;
+        if (secs < 0) return 'just now';
+        if (secs < 60) return secs + 's ago';
+        const mins = Math.floor(secs / 60);
+        if (mins < 60) return mins + 'm ago';
+        const hrs = Math.floor(mins / 60);
+        return hrs + 'h ago';
+    }
+
+    function updateSessionTimers() {
+        document.querySelectorAll('.session-item[data-last-event]').forEach(function(el) {
+            const unix = parseInt(el.dataset.lastEvent, 10);
+            const span = el.querySelector('.session-time');
+            if (span) span.textContent = formatSecondsAgo(unix);
+        });
+    }
 
     // ================================================================
     // INIT
@@ -471,6 +500,8 @@
 
         checkAuth();
 
+        setInterval(updateSessionTimers, 1000);
+
         document.body.addEventListener('htmx:configRequest', function(evt) {
             const token = localStorage.getItem(STORAGE_KEY);
             if (token) {
@@ -478,8 +509,12 @@
             }
         });
 
-        document.body.addEventListener('htmx:afterSwap', function() {
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
             parseMultiChoicePrompts();
+            updateSessionTimers();
+            if (evt.detail.target.id === 'session-detail' && window.innerWidth <= 768) {
+                document.querySelector('.layout').classList.add('mobile-detail');
+            }
         });
 
         parseMultiChoicePrompts();

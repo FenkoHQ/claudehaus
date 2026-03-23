@@ -317,6 +317,14 @@ code, pre, .mono {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    flex: 1;
+}
+
+.session-time {
+    color: var(--text-tertiary);
+    font-size: 11px;
+    white-space: nowrap;
+    margin-left: var(--space-2);
 }
 
 .status-dot {
@@ -531,6 +539,10 @@ code, pre, .mono {
 /* ============================================================
    SESSION DETAIL
    ============================================================ */
+.detail-topbar {
+    display: none;
+}
+
 .session-header {
     margin-bottom: var(--space-5);
 }
@@ -547,8 +559,11 @@ code, pre, .mono {
 .session-path {
     font-size: 12px;
     color: var(--text-secondary);
-    margin-top: var(--space-1);
+    margin-top: var(--space-2);
     font-family: var(--font-mono);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .session-status {
@@ -1120,4 +1135,153 @@ kbd {
 .badge-info {
     background: var(--info-subtle);
     color: var(--info);
+}
+
+/* ============================================================
+   EVENT TYPE COLORS
+   ============================================================ */
+.event-item[data-event="PermissionRequest"] .event-type { color: var(--warning); }
+.event-item[data-event="PermissionRequest"] { border-left: 2px solid var(--warning); }
+
+.event-item[data-event="PreToolUse"] .event-type { color: var(--info); }
+.event-item[data-event="PostToolUse"] .event-type { color: var(--success); }
+
+.event-item[data-event="SessionStart"] .event-type,
+.event-item[data-event="SessionEnd"] .event-type,
+.event-item[data-event="Stop"] .event-type,
+.event-item[data-event="SubagentStop"] .event-type { color: var(--text-tertiary); }
+
+.event-item[data-event="Notification"] .event-type { color: var(--accent-primary); }
+
+/* ============================================================
+   MOBILE LAYOUT
+   ============================================================ */
+@media (max-width: 768px) {
+    :root {
+        --header-height: 48px;
+    }
+
+    .header {
+        padding: 0 var(--space-4);
+    }
+
+    .logo {
+        font-size: 13px;
+    }
+
+    .header-actions .btn-ghost:not(.theme-toggle) {
+        display: none;
+    }
+
+    /* Slide-panel layout */
+    .main {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .sidebar {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        z-index: 2;
+        transform: translateX(0);
+        transition: transform var(--transition-normal);
+    }
+
+    .content {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        padding: var(--space-4);
+        transform: translateX(100%);
+        transition: transform var(--transition-normal);
+        overflow-y: auto;
+    }
+
+    /* Slide sidebar out, content in when session is selected */
+    .layout.mobile-detail .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .layout.mobile-detail .content {
+        transform: translateX(0);
+    }
+
+    /* Show the back button */
+    .detail-topbar {
+        display: flex;
+        align-items: center;
+        margin-bottom: var(--space-3);
+        margin-left: calc(-1 * var(--space-2));
+    }
+
+    /* Session header on mobile */
+    .session-title {
+        font-size: 15px;
+        flex-wrap: wrap;
+    }
+
+    /* Event feed: stack columns on mobile */
+    .event-item {
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto;
+        gap: var(--space-1) var(--space-2);
+        padding: var(--space-3);
+    }
+
+    .event-item::before {
+        display: none;
+    }
+
+    .event-time {
+        grid-column: 2;
+        grid-row: 1;
+        font-size: 11px;
+    }
+
+    .event-type {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .event-tool {
+        grid-column: 1;
+        grid-row: 2;
+        font-size: 11px;
+    }
+
+    .event-detail {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        font-size: 11px;
+        white-space: normal;
+    }
+
+    .event-details {
+        grid-column: 1 / -1;
+        grid-row: 4;
+    }
+
+    /* Approval buttons full-width on mobile */
+    .approval-actions {
+        flex-direction: column;
+    }
+
+    .btn-allow,
+    .btn-deny {
+        width: 100%;
+        justify-content: center;
+        padding: var(--space-3) var(--space-4);
+    }
+
+    /* Bigger tap targets for session items */
+    .session-item {
+        padding: var(--space-4);
+        min-height: 48px;
+    }
+
+    /* Status bar hidden on mobile */
+    .status-bar .muted {
+        display: none;
+    }
 }

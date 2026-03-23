@@ -3,18 +3,23 @@
      hx-get="/partials/session/{{.Session.ID}}"
      hx-trigger="refresh from:body"
      hx-swap="outerHTML">
+
+<div class="detail-topbar">
+    <button class="btn btn-ghost mobile-back" onclick="closeMobileDetail()">&#8592; Sessions</button>
+</div>
+
 <div class="session-header">
     <div class="session-title">
-        <span>{{.Session.Nickname}}</span>
         <span class="session-status {{.Session.Status}}">{{.Session.Status}}</span>
+        <span>{{.Session.Nickname}}</span>
     </div>
     <div class="session-path">{{.Session.ProjectDir}}</div>
 </div>
 
 <div id="notifications" class="notification-container"></div>
 
+{{if .Approvals}}
 <div class="divider"></div>
-
 {{range .Approvals}}
 <div class="approval-card" data-approval-id="{{.ID}}">
     <div class="approval-header">Pending Approval</div>
@@ -40,13 +45,14 @@
     <div class="approval-timeout">Waiting for decision...</div>
 </div>
 {{end}}
+{{end}}
 
 <div class="divider"></div>
 
 <div class="event-feed">
     <div class="event-feed-header">Event Feed</div>
     {{range .Events}}
-    <div class="event-item" onclick="handleEventClick(this, event)" data-expanded="false">
+    <div class="event-item" data-event="{{.EventName}}" onclick="handleEventClick(this, event)" data-expanded="false">
         <span class="event-time">{{.Timestamp}}</span>
         <span class="event-type">{{.EventName}}</span>
         <span class="event-tool">{{.ToolName}}</span>
@@ -56,7 +62,7 @@
         </div>
     </div>
     {{else}}
-    <div class="muted" style="padding: var(--space-2) 0; font-size: 13px;">No events yet</div>
+    <div class="muted" style="padding: var(--space-3) 0; font-size: 13px;">No events yet</div>
     {{end}}
 </div>
 </div>
