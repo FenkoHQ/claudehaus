@@ -2,12 +2,14 @@ package server
 
 import (
 	"net/http"
+
+	claudehaus "github.com/aliadnani/claudehaus"
 )
 
 func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", s.handleHealth)
 
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(claudehaus.StaticFS())))
 
 	mux.HandleFunc("GET /partials/sessions", s.handlePartialSessions)
 	mux.HandleFunc("GET /partials/session/{id}", s.handlePartialSessionDetail)

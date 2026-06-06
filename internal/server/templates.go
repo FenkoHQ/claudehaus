@@ -3,7 +3,9 @@ package server
 import (
 	"html/template"
 	"io"
-	"path/filepath"
+	"io/fs"
+
+	claudehaus "github.com/aliadnani/claudehaus"
 )
 
 type Templates struct {
@@ -11,18 +13,20 @@ type Templates struct {
 }
 
 func NewTemplates() (*Templates, error) {
-	tmpl, err := template.ParseGlob(filepath.Join("web", "templates", "*.html"))
+	tfs := claudehaus.TemplatesFS()
+
+	tmpl, err := template.ParseFS(tfs, "*.html")
 	if err != nil {
 		return nil, err
 	}
 
-	partials, err := filepath.Glob(filepath.Join("web", "templates", "partials", "*.html"))
+	partials, err := fs.Glob(tfs, "partials/*.html")
 	if err != nil {
 		return nil, err
 	}
 
 	if len(partials) > 0 {
-		tmpl, err = tmpl.ParseFiles(partials...)
+		tmpl, err = tmpl.ParseFS(tfs, partials...)
 		if err != nil {
 			return nil, err
 		}
